@@ -7,10 +7,6 @@ on:
         description: 'Comma-separated notebook filenames (relative to workflows/myproject/)'
         required: true
         default: 'my_notebook.py'
-  push:
-    branches: [main]
-    paths:
-      - 'workflows/myproject/**'
 
 jobs:
   deploy:
@@ -32,13 +28,13 @@ jobs:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          mkdir -p ~/.databrickscfg
-          echo "[DEFAULT]" > ~/.databrickscfg
-          echo "host = $DATABRICKS_HOST" >> ~/.databrickscfg
-          echo "token = $DATABRICKS_TOKEN" >> ~/.databrickscfg
+          cat > ~/.databrickscfg << EOF
+          [DEFAULT]
+          host = $DATABRICKS_HOST
+          token = $DATABRICKS_TOKEN
+          EOF
 
-      - name: Deploy selected notebooks (manual trigger)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Deploy selected notebooks
         run: |
           IFS=',' read -ra NOTEBOOKS <<< "${{ github.event.inputs.notebooks }}"
           for nb in "${NOTEBOOKS[@]}"; do
@@ -61,11 +57,3 @@ jobs:
               --format SOURCE \
               --overwrite
           done
-
-      - name: Deploy all notebooks (push trigger)
-        if: github.event_name == 'push'
-        run: |
-          databricks workspace import_dir \
-            workflows/myproject \
-            /Workspace/myproject \
-            --overwrite
