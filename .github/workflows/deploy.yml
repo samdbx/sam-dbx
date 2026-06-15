@@ -1,0 +1,61 @@
+name: Deploy Notebook(s) to Databricks
+
+on:
+  workflow_dispatch:
+    inputs:
+      notebooks:
+        description: 'Comma-separated notebook filenames (relative to workflows/myproject/notebook/)'
+        required: true
+        default: 'my_notebook.py'
+  push:
+    branches: [main]
+    paths:
+      - 'workflows/myproject/notebook/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Databricks CLI
+        run: pip install databricks-cli
+
+      - name: Configure Databricks CLI
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          mkdir -p ~/.databrickscfg
+          echo "[DEFAULT]" > ~/.databrickscfg
+          echo "host = $DATABRICKS_HOST" >> ~/.databrickscfg
+          echo "token = $DATABRICKS_TOKEN" >> ~/.databrickscfg
+
+      - name: Deploy selected notebooks (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          IFS=',' read -ra NOTEBOOKS <<< "${{ github.event.inputs.notebooks }}"
+          for nb in "${NOTEBOOKS[@]}"; do
+            nb_trimmed=$(echo "$nb" | xargs)
+            echo "Deploying: $nb_trimmed"
+            databricks workspace import \
+              "workflows/myproject/notebook/$nb_trimmed" \
+              "/Workspace/myproject/notebook/$nb_trimmed" \
+              --language PYTHON \
+              --format SOURCE \
+              --overwrite
+          done
+
+      - name: Deploy all notebooks (push trigger)
+        if: github.event_name == 'push'
+        run: |
+          databricks workspace import_dir \
+            workflows/myproject/notebook \
+            /Workspace/myproject/notebook \
+            --overwrite
