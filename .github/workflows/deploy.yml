@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       notebooks:
-        description: 'Comma-separated notebook filenames (relative to workflows/myproject/notebook/)'
+        description: 'Comma-separated notebook filenames (relative to workflows/myproject/)'
         required: true
         default: 'my_notebook.py'
   push:
     branches: [main]
     paths:
-      - 'workflows/myproject/notebook/**'
+      - 'workflows/myproject/**'
 
 jobs:
   deploy:
@@ -44,10 +44,20 @@ jobs:
           for nb in "${NOTEBOOKS[@]}"; do
             nb_trimmed=$(echo "$nb" | xargs)
             echo "Deploying: $nb_trimmed"
+
+            ext="${nb_trimmed##*.}"
+            case "$ext" in
+              py) lang="PYTHON" ;;
+              sql) lang="SQL" ;;
+              scala) lang="SCALA" ;;
+              r|R) lang="R" ;;
+              *) lang="PYTHON" ;;
+            esac
+
             databricks workspace import \
-              "workflows/myproject/notebook/$nb_trimmed" \
-              "/Workspace/myproject/notebook/$nb_trimmed" \
-              --language PYTHON \
+              "workflows/myproject/$nb_trimmed" \
+              "/Workspace/myproject/$nb_trimmed" \
+              --language "$lang" \
               --format SOURCE \
               --overwrite
           done
@@ -56,6 +66,6 @@ jobs:
         if: github.event_name == 'push'
         run: |
           databricks workspace import_dir \
-            workflows/myproject/notebook \
-            /Workspace/myproject/notebook \
+            workflows/myproject \
+            /Workspace/myproject \
             --overwrite
