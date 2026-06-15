@@ -52,7 +52,7 @@ jobs:
 
             databricks workspace import \
               "workflows/myproject/$nb_trimmed" \
-              "/Workspace/myproject_TEST/$nb_trimmed" \
+              "/Workspace/myproject_PROD/$nb_trimmed" \
               --language "$lang" \
               --format SOURCE \
               --overwrite
